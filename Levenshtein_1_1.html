@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<!--
+Levenshtein Distance Matrix for multible words at a time.
+Display Options: Levenshtein distance or Overlap
+
+Wolfgang Barth: barth.wolf@gmail.com
+11. November 2015
+-->
+
+<html>
+<head>
+<style>
+.style-line { 
+    height: 10px; 
+    border: 0;
+    box-shadow: inset 0 12px 12px -12px rgba(0, 0, 0, 0.2); 
+}
+</style>
+
+<script>
+
+var csvContentAll = "data:text/csv;charset=utf-8,"; // this is the CSV encoding
+
+/* Deletes existing tables, if any 
+ * creates new empty table after selection of "number of words" 
+ * adds IDs to every cell in the table 
+ */
+function drawTable() {
+	
+    // Creates the global variables for table references x1 x2... y1 y2...
+	numOfWords = document.getElementById("mySelect").value;
+    xses = []
+	yses = []
+    for (i = 1; i <=numOfWords; i++) {
+	    xses.push("x" + i);
+		yses.push("y" + i);
+	    }
+	
+	// Deletes old table if drawTable() is called repeatedly
+    var tbl = document.getElementById('toc');
+    if(tbl) {
+	    tbl.parentNode.removeChild(tbl);
+		}
+    
+    /* Create the table with all rows and columns */
+	
+	// 1. select body tag
+    var body = document.getElementsByTagName('body')[0];
+    
+	// 2. create table
+    var tbl = document.createElement('table');
+	tbl.setAttribute('id', 'toc');
+	
+	// 3. create table body
+    var tbdy = document.createElement('tbody');
+	
+	// 4. create rows
+	var tr = document.createElement('tr');
+	
+	// 5. create first cell left-top
+	var td = document.createElement('td');
+		td.setAttribute('size','8');
+		tr.appendChild(td);
+	
+	// 6. create header cells and add to header row 
+	for (index = 0; index <xses.length; index++) {
+	    var td = document.createElement('td');
+		
+		//6a. create input area with attributes for header row
+		var inp = document.createElement('input');
+		inp.setAttribute('type', 'text');
+		inp.setAttribute('size','8');
+		inp.setAttribute('id', (xses[index]));
+		td.appendChild(inp);
+		tr.appendChild(td);
+	}	
+	tbdy.appendChild(tr);
+	
+	// 7. create the following rows below
+    for (indey = 0; indey < yses.length; indey++) {
+	
+	    // 7a. create first cell in each row
+        var tr = document.createElement('tr');
+		
+		// 7b. create ids for first cell: y1, y2, y3, yx...
+		var td = document.createElement('td');
+		td.setAttribute('id', yses[indey]);
+		td.setAttribute('size', '8');
+		tr.appendChild(td);
+		
+		// 7c. create remaining cells for each row
+        for (index = 0; index < xses.length; index++) {
+		
+		    // 7d. creat cells for each column with id; x1y1, x2y1, x3y1...
+            var td = document.createElement('td');
+			td.setAttribute('id', xses[index] + yses[indey]);
+			td.setAttribute('size','8');
+            tr.appendChild(td);
+            }
+		
+		//7d. ad all rows to tbody
+        tbdy.appendChild(tr);
+        }
+	// 8. ad the whole table to the body
+    tbl.appendChild(tbdy);
+    body.appendChild(tbl);
+    }
+  
+/* Get content from x header cells 
+ * and creates y header cell content 
+ */
+function populateYAxis(numOfWords) {
+	for (i = 1; i <=numOfWords; i++) {
+		document.getElementById("y" + i).innerHTML = document.getElementById("x" + i).value;
+		document.getElementById("y" + i).style.border = "thin solid gray";
+	    }
+    }
+
+/* Levinshtein distance calculater
+ * computes the edit distance between the two given strings	from:
+ * https://en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Levenshtein_distance 
+ * RETURN: int or float 
+ */
+function getEditDistance(a, b) {
+
+    var c // Length of the longer of the two strings
+    if(a.length >= b.length) { c = a.length }
+    if (b.length > a.length) {c = b.length }
+
+	// If cell is left empty X is stored in export data
+    if(a.length === 0) {
+	allData.push(" X ");
+	return " x "; 
+	}
+	
+    if(b.length === 0) {
+	allData.push(" X ");
+	return " x ";
+	}
+
+    var matrix = [];
+
+    // Increment along the first column of each row
+    var i;
+    for(i = 0; i <= b.length; i++){
+        matrix[i] = [i];
+        }
+
+    // Increment each column in the first row
+    var j;
+    for(j = 0; j <= a.length; j++){
+        matrix[0][j] = j;
+        }
+
+    // Fill in the rest of the matrix
+    for(i = 1; i <= b.length; i++){
+        for(j = 1; j <= a.length; j++){
+            if(b.charAt(i-1) == a.charAt(j-1)){
+                matrix[i][j] = matrix[i-1][j-1];
+            } else {
+                matrix[i][j] = Math.min(matrix[i-1][j-1] + 1, // substitution
+                                 Math.min(matrix[i][j-1] + 1, // insertion
+                                          matrix[i-1][j] + 1)); // deletion
+                }
+            }
+        }
+	
+	/* Populate table with overlap or Levenshtein distance */
+	var concentType = document.getElementById("contentType").value;
+	if (contentType.value == "LD") {
+	    allData.push(matrix[b.length][a.length]) + " ";
+        return matrix[b.length][a.length];
+        } 
+	
+	/* Returns overlap of the two compared terms */
+	else if (contentType.value == "PC") {
+	    var result = 1 - (matrix[b.length][a.length]) / c;
+		
+	    // Round up to two digits after .
+	    allData.push(Math.round(result*100)/100) + " ";
+        return Math.round(result*100)/100;
+		} 
+    }
+	
+/* Value for each x and each y is send to getEditDistance()
+ * calles table cells by ID
+ * and displays the result 
+ */	
+function populateLevenshtein() {
+
+    allData = [] // array taking all data for CSV export
+
+	// iterate through all X'ses
+	var index;
+    for (index = 0; index < xses.length; index++) {
+	
+	    // iterate through all Y'ses
+	    var indey;
+	    for (indey = 0; indey < yses.length; indey++){
+		
+	        /* For each X & Y creat ID for cell lookup 
+			   !! var s looks up the x value NOT the y value as all y cells are empty !! */
+			var xsesyses = xses[index] + yses[indey];
+			var r = document.getElementById(xses[index]).value;
+			var s = document.getElementById(xses[indey]).value;
+			
+			// populate and style cells
+			var levenshtein = getEditDistance(r, s);
+			document.getElementById(xsesyses).innerHTML = levenshtein;
+			document.getElementById(xsesyses).style.backgroundColor = convertHex("#9999ff", levenshtein);	
+		    }
+	    }
+    }
+
+/* creates the background color for the cells
+ * opacity comes from the levenshtein value
+ */
+function convertHex(hex,opacity){
+		    hex = hex.replace('#','');
+		    r = parseInt(hex.substring(0,2), 16);
+		    g = parseInt(hex.substring(2,4), 16);
+		    b = parseInt(hex.substring(4,6), 16);
+			
+			// Add Opacity to RGB to obtain RGBA
+		    result = 'rgba('+r+','+g+','+b+','+opacity +')';
+		    return result;
+		}
+	
+// add alldata of current table to export array
+function addToExport() {
+    for (index = 0; index < allData.length; index++) {
+        csvContentAll += allData[index] + ";";
+        }
+	csvContentAll += "\n"
+	
+	// update the comment
+	setComment(" + data added to export + ");
+    }
+
+// encoding and send to CSV file
+function exportCSVNow() {
+    var encodedUri = encodeURI(csvContentAll);
+    window.open(encodedUri);
+	setComment(" + CSV file exported + ");
+    }
+
+/* called by Evaluate button 
+ * calculation of content
+ * and population of table 
+ */
+function calculateInput() {
+    populateYAxis(numOfWords);
+    populateLevenshtein();
+	setComment(" + input calculated + ");
+    }
+
+/* clears all data from export array
+ * resets the encoding
+ */
+function clearExportFile() {
+    csvContentAll = "data:text/csv;charset=utf-8,";
+	setComment(" + export file cleared + ");
+}
+
+/* set the system comment as simple log
+ */ 
+function setComment(commentString) {
+	document.getElementById("comment").innerHTML = commentString;
+	document.getElementById("comment").style.color = '#D8D8D8';
+	}
+  
+</script>
+</head>
+
+<body onkeydown="setComment('...')">
+<p style="font-family:arial;display:inline;font-weight:bold;color: green"> LEVENSHTEIN 1.1</p>
+<pre style="font-family:arial;display:inline;">     number of words:</pre>
+<select id="mySelect" onchange="drawTable()">
+  <option value="1">1
+  <option value="2">2
+  <option value="3">3
+  <option value="4">4
+  <option value="5">5
+  <option value="6">6
+  <option value="7">7
+  <option value="8">8
+  <option value="9">9
+  <option value="10">10
+  <option value="11">11
+  <option value="12">12
+  <option value="13">13
+  <option value="14">14
+  <option value="15">15
+  <option value="16">16
+  <option value="17">17
+  <option value="18">18
+  <option value="19">19
+  <option value="20">20
+
+</select>
+<pre style="font-family:arial;display:inline;">     calculate:</pre>
+<select id="contentType">
+  <option value="PC"> Overlap
+  <option value="LD"> Levenshtein Distance
+</select>
+
+<pre style="font-family:arial;display:inline;">  |  </pre>
+<button type="button" onclick="calculateInput()">Evaluate</button>
+<button type="button" onclick="addToExport()">Add to Export</button>
+<button type="button" onclick="exportCSVNow()">Export to CSV</button>
+<button type="button" onclick="clearExportFile()">Clear Export File</button>
+<pre style="font-family:arial;display:inline;" id="comment"></pre>
+<hr class="style-line">
+</body>
+</html>
